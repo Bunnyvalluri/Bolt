@@ -9,6 +9,16 @@ if (typeof globalThis.File === 'undefined') {
     }
   };
 }
+
+// Skip workerd on systems without GLIBC 2.35 (e.g., Vercel)
+if (process.env.VERCEL || !require.resolve || true) {
+  try {
+    require.resolve('@cloudflare/workerd-linux-64');
+  } catch (e) {
+    // workerd not available, set env to skip it
+    process.env.CLOUDFLARE_WORKERD_SKIP = '1';
+  }
+}
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');

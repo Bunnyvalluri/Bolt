@@ -10,15 +10,10 @@ if (typeof globalThis.File === 'undefined') {
   };
 }
 
-// Skip workerd on systems without GLIBC 2.35 (e.g., Vercel)
-if (process.env.VERCEL || !require.resolve || true) {
-  try {
-    require.resolve('@cloudflare/workerd-linux-64');
-  } catch (e) {
-    // workerd not available, set env to skip it
-    process.env.CLOUDFLARE_WORKERD_SKIP = '1';
-  }
-}
+// Set environment variables BEFORE any module loads
+// This prevents workerd from being invoked during build
+process.env.CLOUDFLARE_WORKERD_SKIP = '1';
+process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --no-warnings';
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -38,7 +33,12 @@ try {
   return;
 }
 
-// Spawn node with the polyfill preloaded
-const nodeArgs = ['--require', path.join(__dirname, 'polyfill-file.cjs'), remixCli, ...args];
+// Spawn node with both polyfills and workerd disabler preloaded
+const nodeArgs = [
+  '--require', path.join(__dirname, 'disable-workerd.cjs'),
+  '--require', path.join(__dirname, 'polyfill-file.cjs'),
+  remixCli,
+  ...args
+];
 const child = spawn(process.execPath, nodeArgs, { stdio: 'inherit' });
 child.on('exit', code => process.exit(code));
